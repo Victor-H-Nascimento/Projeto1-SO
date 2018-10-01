@@ -11,55 +11,34 @@ static char receive[BUFFER_LENGTH]; ///< The receive buffer from the LKM
 int main(int argc, char *argv[])
 {
     //talvez seja a posição 1 para a letra e a 2 para o texto de criptografia
-    if (argc != 0)
+    if (argc > 1)
     {
-        if (argv[0] == "c")
+        if (strcmp(argv[1], "c") == 0)
         {
-            printf("VOCE ESCOLHEU CRIPTOGRAFAR A MENSAGEM: %s\n", argv[1]);
+            printf("VOCE ESCOLHEU CRIPTOGRAFAR A MENSAGEM: %s\n", argv[2]);
         }
-        if (argv[0] == "d")
+        else
         {
-            printf("VOCE ESCOLHEU DESCRIPTOGRAFAR\n");
-        }
-        if (argv[0] == "h")
-        {
-            printf("VOCE ESCOLHEU RESUMO CRIPTOGRAFICO\n");
+            if (strcmp(argv[1], "d") == 0)
+            {
+                printf("VOCE ESCOLHEU DESCRIPTOGRAFAR\n");
+            }
+            else
+            {
+                if (strcmp(argv[1], "h") == 0)
+                {
+                    printf("VOCE ESCOLHEU RESUMO CRIPTOGRAFICO\n");
+                }
+                else
+                {
+                    printf("OPCAO: %s INDISPONIVEL\n", argv[1]);
+                }
+            }
         }
     }
     else
     {
         printf("FAVOR ESCOLHER ALGUMA OPCAO!\n");
     }
-    int ret, fd;
-    char stringToSend[BUFFER_LENGTH];
-    printf("Starting device test code example...\n");
-    fd = open("/dev/ebbchar", O_RDWR); // Open the device with read/write access
-    if (fd < 0)
-    {
-        perror("Failed to open the device...");
-        return errno;
-    }
-    printf("Type in a short string to send to the kernel module:\n");
-    scanf("%[^\n]%*c", stringToSend); // Read in a string (with spaces)
-    printf("Writing message to the device [%s].\n", stringToSend);
-    ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
-    if (ret < 0)
-    {
-        perror("Failed to write the message to the device.");
-        return errno;
-    }
-
-    printf("Press ENTER to read back from the device...\n");
-    getchar();
-
-    printf("Reading from the device...\n");
-    ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
-    if (ret < 0)
-    {
-        perror("Failed to read the message from the device.");
-        return errno;
-    }
-    printf("The received message is: [%s]\n", receive);
-    printf("End of the program\n");
     return 0;
 }
