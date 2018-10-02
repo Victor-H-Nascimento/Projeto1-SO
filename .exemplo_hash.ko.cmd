@@ -1,0 +1,1 @@
+cmd_/home/murilo/Documents/GitHub/Projeto1-SO/exemplo_hash.ko := ld -r -m elf_x86_64 -z max-page-size=0x200000 -T ./scripts/module-common.lds --build-id  -o /home/murilo/Documents/GitHub/Projeto1-SO/exemplo_hash.ko /home/murilo/Documents/GitHub/Projeto1-SO/exemplo_hash.o /home/murilo/Documents/GitHub/Projeto1-SO/exemplo_hash.mod.o ;  true
