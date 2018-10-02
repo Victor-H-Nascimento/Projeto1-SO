@@ -10,19 +10,21 @@
  * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
  */
 
-#include <linux/init.h>       // Macros used to mark up functions e.g. __init __exit
-#include <linux/module.h>     // Core header for loading LKMs into the kernel
-#include <linux/device.h>     // Header to support the kernel Driver Model
-#include <linux/kernel.h>     // Contains types, macros, functions for the kernel
-#include <linux/fs.h>         // Header for the Linux file system support
-#include <linux/uaccess.h>    // Required for the copy to user function
-#define DEVICE_NAME "ebbchar" ///< The device will appear at /dev/ebbchar using this value
-#define CLASS_NAME "ebb"      ///< The device class -- this is a character device driver
+#include <linux/init.h>      // Macros used to mark up functions e.g. __init __exit
+#include <linux/module.h>    // Core header for loading LKMs into the kernel
+#include <linux/device.h>    // Header to support the kernel Driver Model
+#include <linux/kernel.h>    // Contains types, macros, functions for the kernel
+#include <linux/fs.h>        // Header for the Linux file system support
+#include <linux/uaccess.h>   // Required for the copy to user function
+#define DEVICE_NAME "crypto" ///< The device will appear at /dev/ebbchar using this value
+#define CLASS_NAME "cpt"     ///< The device class -- this is a character device driver
 
-MODULE_LICENSE("GPL");                                        ///< The license type -- this affects available functionality
-MODULE_AUTHOR("Derek Molloy");                                ///< The author -- visible when you use modinfo
-MODULE_DESCRIPTION("A simple Linux char driver for the BBB"); ///< The description -- see modinfo
-MODULE_VERSION("0.1");                                        ///< A version number to inform users
+MODULE_LICENSE("GPL");                                                ///< The license type -- this affects available functionality
+MODULE_AUTHOR("Joao Murilo Victor");                                  ///< The author -- visible when you use modinfo
+MODULE_DESCRIPTION("Modulo de Linux para cryptografar uma mensagem"); ///< The description -- see modinfo
+MODULE_VERSION("0.1");                                                ///< A version number to inform users
+
+static char *key = "0123456789ABCDEF";
 
 static int majorNumber;                     ///< Stores the device number -- determined automatically
 static char message[256] = {0};             ///< Memory for the string that is passed from userspace
@@ -30,6 +32,11 @@ static short size_of_message;               ///< Used to remember the size of th
 static int numberOpens = 0;                 ///< Counts the number of times the device is opened
 static struct class *ebbcharClass = NULL;   ///< The device-driver class struct pointer
 static struct device *ebbcharDevice = NULL; ///< The device-driver device struct pointer
+
+//receber por parametros
+
+module_param(key, charp, 0000);
+MODULE_PARM_DESC(key, "Chave para cryptografia");
 
 // The prototype functions for the character driver -- must come before the struct definition
 static int dev_open(struct inode *, struct file *);
@@ -57,26 +64,25 @@ static struct file_operations fops =
  */
 static int __init ebbchar_init(void)
 {
-    printk(KERN_INFO "EBBChar: Initializing the EBBChar LKM\n");
+    printk(KERN_INFO "CryptoModule: modulo crypto inicializado com a chave: %s.\n", key);
 
     // Try to dynamically allocate a major number for the device -- more difficult but worth it
     majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
     if (majorNumber < 0)
     {
-        printk(KERN_ALERT "EBBChar failed to register a major number\n");
+        printk(KERN_ALERT "CryptoModule: erro ao registrar o major number.\n");
         return majorNumber;
     }
-    printk(KERN_INFO "EBBChar: registered correctly with major number %d\n", majorNumber);
-
+    printk(KERN_INFO "CryptoModule: registrado corretamente com o major number: %d.\n", majorNumber);
     // Register the device class
     ebbcharClass = class_create(THIS_MODULE, CLASS_NAME);
     if (IS_ERR(ebbcharClass))
     { // Check for error and clean up if there is
         unregister_chrdev(majorNumber, DEVICE_NAME);
-        printk(KERN_ALERT "Failed to register device class\n");
+        printk(KERN_ALERT "CryptoModule: falha ao registrar o device class.\n");
         return PTR_ERR(ebbcharClass); // Correct way to return an error on a pointer
     }
-    printk(KERN_INFO "EBBChar: device class registered correctly\n");
+    printk(KERN_INFO "CryptoModule: dispositivo registrado corretamente.\n");
 
     // Register the device driver
     ebbcharDevice = device_create(ebbcharClass, NULL, MKDEV(majorNumber, 0), NULL, DEVICE_NAME);
@@ -84,10 +90,10 @@ static int __init ebbchar_init(void)
     {                                // Clean up if there is an error
         class_destroy(ebbcharClass); // Repeated code but the alternative is goto statements
         unregister_chrdev(majorNumber, DEVICE_NAME);
-        printk(KERN_ALERT "Failed to create the device\n");
+        printk(KERN_ALERT "CryptoModule: falha ao criar o dispositivo.\n");
         return PTR_ERR(ebbcharDevice);
     }
-    printk(KERN_INFO "EBBChar: device class created correctly\n"); // Made it! device was initialized
+    printk(KERN_INFO "CryptoModule: device class criado corretamente.\n"); // Made it! device was initialized
     return 0;
 }
 
@@ -101,7 +107,7 @@ static void __exit ebbchar_exit(void)
     class_unregister(ebbcharClass);                      // unregister the device class
     class_destroy(ebbcharClass);                         // remove the device class
     unregister_chrdev(majorNumber, DEVICE_NAME);         // unregister the major number
-    printk(KERN_INFO "EBBChar: Goodbye from the LKM!\n");
+    printk(KERN_INFO "CryptoModule: bjunda, ate mais!\n");
 }
 
 /** @brief The device open function that is called each time the device is opened
@@ -112,7 +118,7 @@ static void __exit ebbchar_exit(void)
 static int dev_open(struct inode *inodep, struct file *filep)
 {
     numberOpens++;
-    printk(KERN_INFO "EBBChar: Device has been opened %d time(s)\n", numberOpens);
+    printk(KERN_INFO "CryptoModule: dispositivo aberto %d vez(es).\n", numberOpens);
     return 0;
 }
 
@@ -132,12 +138,12 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
     if (error_count == 0)
     { // if true then have success
-        printk(KERN_INFO "EBBChar: Sent %d characters to the user\n", size_of_message);
+        printk(KERN_INFO "CryptoModule: enviado %d caracteres para o usuario.\n", size_of_message);
         return (size_of_message = 0); // clear the position to the start and return 0
     }
     else
     {
-        printk(KERN_INFO "EBBChar: Failed to send %d characters to the user\n", error_count);
+        printk(KERN_INFO "CryptoModule: falha ao enviar %d caracteres ao usuario.\n", error_count);
         return -EFAULT; // Failed -- return a bad address message (i.e. -14)
     }
 }
@@ -151,10 +157,10 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
-{
-    sprintf(message, "%s(%zu letters)", buffer, len); // appending received string with its length
+{   // len possui a quantidade de caracteres escritos
+    sprintf(message, "%s", buffer); // appending received string with its length
     size_of_message = strlen(message);                // store the length of the stored message
-    printk(KERN_INFO "EBBChar: Received %zu characters from the user\n", len);
+    printk(KERN_INFO "CryptoModule: recebido %zu caracteres do usuario.\n", len);
     return len;
 }
 
@@ -165,7 +171,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
  */
 static int dev_release(struct inode *inodep, struct file *filep)
 {
-    printk(KERN_INFO "EBBChar: Device successfully closed\n");
+    printk(KERN_INFO "CryptoModule: dispositivo fechado com sucesso.\n");
     return 0;
 }
 

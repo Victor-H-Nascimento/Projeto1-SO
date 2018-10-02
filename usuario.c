@@ -20,10 +20,10 @@ int main(int argc, char *argv[])
     {
         if (strcmp(argv[1], "c") == 0)
         {
-            printf("VOCE ESCOLHEU CRIPTOGRAFAR A MENSAGEM: %s.\n", argv[2]);
+            printf("VOCE ESCOLHEU CRIPTOGRAFAR A MENSAGEM: [%s].\n", argv[2]);
             char stringToSend[BUFFER_LENGTH];
             strcpy(stringToSend, argv[2]);
-            printf("ESCREVENDO A MENSAGEM: %s.\n", stringToSend);
+            printf("ESCREVENDO A MENSAGEM: [%s].\n", stringToSend);
             int ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
             if (ret < 0)
             {
@@ -42,7 +42,14 @@ int main(int argc, char *argv[])
                     perror("ERRO AO LER DO DISPOSITIVO.\n");
                     return errno;
                 }
-                printf("MENSAGEM DESCRIPTOGRAFADA : %s.\n", receive);
+                if (receive == NULL || strcmp(receive, "") == 0)
+                {
+                    printf("NAO EXISTE MENSAGEM PARA DESCRIPTOGRAFAR.\n");
+                }
+                else
+                {
+                    printf("MENSAGEM DESCRIPTOGRAFADA: [%s].\n", receive);
+                }
             }
             else
             {
@@ -52,7 +59,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("OPCAO: %s INDISPONIVEL\n", argv[1]);
+                    printf("OPCAO: [%s] INDISPONIVEL\n", argv[1]);
                 }
             }
         }

@@ -1,1 +1,0 @@
-cmd_/home/murilo/Documents/GitHub/Projeto1-SO/moduloKernel.ko := ld -r -m elf_x86_64 -z max-page-size=0x200000 -T ./scripts/module-common.lds --build-id  -o /home/murilo/Documents/GitHub/Projeto1-SO/moduloKernel.ko /home/murilo/Documents/GitHub/Projeto1-SO/moduloKernel.o /home/murilo/Documents/GitHub/Projeto1-SO/moduloKernel.mod.o ;  true
