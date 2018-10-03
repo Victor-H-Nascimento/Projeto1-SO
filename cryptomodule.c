@@ -157,9 +157,9 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
-{   // len possui a quantidade de caracteres escritos
-    sprintf(message, "%s", buffer); // appending received string with its length
-    size_of_message = strlen(message);                // store the length of the stored message
+{                                      // len possui a quantidade de caracteres escritos
+    sprintf(message, "%s", buffer);    // appending received string with its length
+    size_of_message = strlen(message); // store the length of the stored message
     printk(KERN_INFO "CryptoModule: recebido %zu caracteres do usuario.\n", len);
     return len;
 }

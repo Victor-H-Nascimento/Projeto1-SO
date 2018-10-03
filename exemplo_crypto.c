@@ -43,9 +43,11 @@ static int test_skcipher_result(struct skcipher_def *sk, int rc)
     switch (rc)
     {
     case 0:
+        pr_info("Entrou em case 0 de test_skcipher_result\n");
         break;
     case -EINPROGRESS:
     case -EBUSY:
+        pr_info("Entrou em case -EINPROGRESS | EBUSY de test_skcipher_result\n");
         rc = wait_for_completion_interruptible(
             &sk->result.completion);
         if (!rc && !sk->result.err)
@@ -66,11 +68,16 @@ static int test_skcipher_result(struct skcipher_def *sk, int rc)
 
 static void test_skcipher_callback(struct crypto_async_request *req, int error)
 {
+
     struct tcrypt_result *result = req->data;
+    pr_info("Entrou em test_skcipher_callback\n");
     /* int ret; */
 
     if (error == -EINPROGRESS)
+    {
+        pr_info("Entrou no if do error == -EINPROGRESS\n");
         return;
+    }
 
     result->err = error;
     complete(&result->completion);
@@ -170,6 +177,7 @@ static int test_skcipher_encrypt(char *plaintext, char *password,
 
     /* encrypt data */
     ret = crypto_skcipher_encrypt(sk->req);
+    pr_info("sk->req : %d", sk->req);
     ret = test_skcipher_result(sk, ret);
     if (ret)
         goto out;
