@@ -69,7 +69,7 @@ static struct file_operations fops =
 static int __init ebbchar_init(void)
 {
     printk(KERN_INFO "CryptoModule: modulo crypto inicializado com a chave: %s.\n", key);
-    //my_test();
+    my_test();
     // Try to dynamically allocate a major number for the device -- more difficult but worth it
     majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
     if (majorNumber < 0)
@@ -264,36 +264,57 @@ static void my_test(void)
 
     memcpy(iv, my_iv, ivsize);
 
-    input[0] = 0x00000000;
-    input[1] = 0x00000000;
-    input[2] = 0x00000000;
-    input[3] = 0x00000000;
-    printk("MY_TEST: input: %x,%x,%x,%x\n", input[0], input[1], input[2], input[3]);
+    char texto[256] = {"TETA"};
+    pr_info("Tamanho da entrada: %d\n", strlen(texto));
+    int j;
+    int n_loops = strlen(texto) / 4;
+    if (strlen(texto) % 4 != 0)
+    {
+        n_loops++;
+    }
+    int i;
+    for (j = 0; j < n_loops; j++)
+    {
 
-    *((uint32_t *)(&src[0])) = input[0];
-    *((uint32_t *)(&src[4])) = input[1];
-    *((uint32_t *)(&src[8])) = input[2];
-    *((uint32_t *)(&src[12])) = input[3];
+        for (i = 0; i < 4; i++)
+        {
+            input[i] = texto[i];
+        }
 
-    temp[0] = 0xFFFFFFFF;
-    temp[1] = 0xFFFFFFFF;
-    temp[2] = 0xFFFFFFFF;
-    temp[3] = 0xFFFFFFFF;
-    *((uint32_t *)(&dst[0])) = temp[0];
-    *((uint32_t *)(&dst[4])) = temp[1];
-    *((uint32_t *)(&dst[8])) = temp[2];
-    *((uint32_t *)(&dst[12])) = temp[3];
+        printk("MY_TEST: input: %c,%c,%c,%c\n", input[0], input[1], input[2], input[3]);
 
-    sg_init_one(src_sg, src, blk_len);
-    sg_init_one(dst_sg, dst, blk_len);
+        for (i = 0; i < 4; i++)
+        {
+            *((uint32_t *)(&src[i * 4])) = input[i];
+        }
 
-    ret = crypto_blkcipher_encrypt(&desc, dst_sg, src_sg, src_sg->length);
+        for (i = 0; i < 4; i++)
+        {
+            temp[i] = 0xFFFFFFFF;
+            *((uint32_t *)(&dst[i * 4])) = temp[i];
+        }
+
+        sg_init_one(src_sg, src, blk_len);
+        sg_init_one(dst_sg, dst, blk_len);
+
+        ret = crypto_blkcipher_encrypt(&desc, dst_sg, src_sg, src_sg->length);
+        if (ret < 0)
+            pr_err("MY_TEST: phase one failed %d\n", ret);
+
+        for (i = 0; i < 4; i++)
+        {
+            output[i] = *((uint32_t *)(&dst[i * 4]));
+        }
+        printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
+    }
+    ret = crypto_blkcipher_decrypt(&desc, dst_sg, dst_sg, src_sg->length);
     if (ret < 0)
         pr_err("MY_TEST: phase one failed %d\n", ret);
-    output[0] = *((uint32_t *)(&dst[0]));
-    output[1] = *((uint32_t *)(&dst[4]));
-    output[2] = *((uint32_t *)(&dst[8]));
-    output[3] = *((uint32_t *)(&dst[12]));
+
+    for (i = 0; i < 4; i++)
+    {
+        output[i] = *((uint32_t *)(&dst[i * 4]));
+    }
 
     printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
 
