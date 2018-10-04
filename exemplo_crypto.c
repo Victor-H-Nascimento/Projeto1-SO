@@ -1,216 +1,158 @@
-#include <crypto/internal/skcipher.h>
 #include <linux/module.h>
+#include <linux/init.h>
+#include <linux/types.h>
+#include <linux/errno.h>
 #include <linux/crypto.h>
+#include <linux/scatterlist.h>
+#include <linux/vmalloc.h>
 
-#define SYMMETRIC_KEY_LENGTH 32
-#define CIPHER_BLOCK_SIZE 16
-
-struct tcrypt_result
+void my_test(void)
 {
-    struct completion completion;
-    int err;
-};
+    uint32_t *input;
+    uint32_t *output;
+    uint32_t *temp;
+    unsigned char *src;
+    unsigned char *dst;
+    size_t blk_len = 16;
+    size_t key_len = 16;
+    int ret;
 
-struct skcipher_def
-{
-    struct scatterlist sg;
-    struct crypto_skcipher *tfm;
-    struct skcipher_request *req;
-    struct tcrypt_result result;
-    char *scratchpad;
-    char *ciphertext;
-    char *ivdata;
-};
+    struct crypto_blkcipher *my_tfm;
+    struct blkcipher_desc desc;
+    struct scatterlist *src_sg;
+    struct scatterlist *dst_sg;
 
-static struct skcipher_def sk;
+    unsigned char my_key[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-static void test_skcipher_finish(struct skcipher_def *sk)
-{
-    if (sk->tfm)
-        crypto_free_skcipher(sk->tfm);
-    if (sk->req)
-        skcipher_request_free(sk->req);
-    if (sk->ivdata)
-        kfree(sk->ivdata);
-    if (sk->scratchpad)
-        kfree(sk->scratchpad);
-    if (sk->ciphertext)
-        kfree(sk->ciphertext);
+    unsigned char *my_iv;
+    void *iv;
+    size_t ivsize = 16;
+    my_iv = vmalloc(blk_len);
+    memset(my_iv, 0, blk_len);
+
+    temp = vmalloc(blk_len);
+
+    src_sg = vmalloc(sizeof(struct scatterlist));
+    if (!src_sg)
+    {
+        printk("MY_TEST: failed to alloc src_sg!!!\n");
+        goto src_sg_free;
+    }
+    dst_sg = vmalloc(sizeof(struct scatterlist));
+    if (!dst_sg)
+    {
+        printk("MY_TEST: failed to alloc dst_sg!!!\n");
+        goto dst_sg_free;
+    }
+    input = vmalloc(blk_len);
+    if (!input)
+    {
+        printk("MY_TEST: failed to alloc input!!!\n");
+        goto input_free;
+    }
+    output = vmalloc(blk_len);
+    if (!output)
+    {
+        printk("MY_TEST: failed to alloc output!!!\n");
+        goto output_free;
+    }
+    src = vmalloc(blk_len);
+    if (!src)
+    {
+        printk("MY_TEST: failed to alloc src!!!\n");
+        goto src_free;
+    }
+    dst = vmalloc(blk_len);
+    if (!dst)
+    {
+        printk("MY_TEST: failed to alloc dst!!!\n");
+        goto dst_free;
+    }
+
+    my_tfm = crypto_alloc_blkcipher("ecb(aes)", 0, 0);
+    if (!my_tfm)
+    {
+        printk("MY_TEST: failed to alloc tfm!!!\n");
+        goto crypto_free;
+    }
+
+    desc.tfm = my_tfm;
+    desc.flags = 0;
+    crypto_blkcipher_setkey(my_tfm, my_key, key_len);
+
+    iv = crypto_blkcipher_crt(my_tfm)->iv;
+    ivsize = crypto_blkcipher_ivsize(my_tfm);
+
+    memcpy(iv, my_iv, ivsize);
+
+    input[0] = 0x80000000;
+    input[1] = 0x00000000;
+    input[2] = 0x00000000;
+    input[3] = 0x00000000;
+    printk("MY_TEST: input: %x,%x,%x,%x\n", input[0], input[1], input[2], input[3]);
+
+    *((uint32_t *)(&src[0])) = input[0];
+    *((uint32_t *)(&src[4])) = input[1];
+    *((uint32_t *)(&src[8])) = input[2];
+    *((uint32_t *)(&src[12])) = input[3];
+
+    temp[0] = 0xFFFFFFFF;
+    temp[1] = 0xFFFFFFFF;
+    temp[2] = 0xFFFFFFFF;
+    temp[3] = 0xFFFFFFFF;
+    *((uint32_t *)(&dst[0])) = temp[0];
+    *((uint32_t *)(&dst[4])) = temp[1];
+    *((uint32_t *)(&dst[8])) = temp[2];
+    *((uint32_t *)(&dst[12])) = temp[3];
+
+    sg_init_one(src_sg, src, blk_len);
+    sg_init_one(dst_sg, dst, blk_len);
+
+    ret = crypto_blkcipher_encrypt(&desc, dst_sg, src_sg, src_sg->length);
+    if (ret < 0)
+        pr_err("MY_TEST: phase one failed %d\n", ret);
+    output[0] = *((uint32_t *)(&dst[0]));
+    output[1] = *((uint32_t *)(&dst[4]));
+    output[2] = *((uint32_t *)(&dst[8]));
+    output[3] = *((uint32_t *)(&dst[12]));
+
+    printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
+
+    crypto_free_blkcipher(my_tfm);
+
+    vfree(temp);
+
+crypto_free:
+    vfree(dst);
+dst_free:
+    vfree(src);
+src_free:
+    vfree(output);
+output_free:
+    vfree(input);
+input_free:
+    vfree(dst_sg);
+dst_sg_free:
+    vfree(src_sg);
+src_sg_free:
+    printk("MY_TEST: END!!!\n");
 }
 
-static int test_skcipher_result(struct skcipher_def *sk, int rc)
+static int test_mod_init(void)
 {
-    switch (rc)
-    {
-    case 0:
-        pr_info("Entrou em case 0 de test_skcipher_result\n");
-        break;
-    case -EINPROGRESS:
-    case -EBUSY:
-        pr_info("Entrou em case -EINPROGRESS | EBUSY de test_skcipher_result\n");
-        rc = wait_for_completion_interruptible(
-            &sk->result.completion);
-        if (!rc && !sk->result.err)
-        {
-            reinit_completion(&sk->result.completion);
-            break;
-        }
-    default:
-        pr_info("skcipher encrypt returned with %d result %d\n",
-                rc, sk->result.err);
-        break;
-    }
-
-    init_completion(&sk->result.completion);
-
-    return rc;
-}
-
-static void test_skcipher_callback(struct crypto_async_request *req, int error)
-{
-
-    struct tcrypt_result *result = req->data;
-    pr_info("Entrou em test_skcipher_callback\n");
-    /* int ret; */
-
-    if (error == -EINPROGRESS)
-    {
-        pr_info("Entrou no if do error == -EINPROGRESS\n");
-        return;
-    }
-
-    result->err = error;
-    complete(&result->completion);
-    pr_info("Encryption finished successfully\n");
-
-    /* decrypt data */
-    /*
-    memset((void*)sk.scratchpad, '-', CIPHER_BLOCK_SIZE);
-    ret = crypto_skcipher_decrypt(sk.req);
-    ret = test_skcipher_result(&sk, ret);
-    if (ret)
-        return;
-
-    sg_copy_from_buffer(&sk.sg, 1, sk.scratchpad, CIPHER_BLOCK_SIZE);
-    sk.scratchpad[CIPHER_BLOCK_SIZE-1] = 0;
-
-    pr_info("Decryption request successful\n");
-    pr_info("Decrypted: %s\n", sk.scratchpad);
-    */
-}
-
-static int test_skcipher_encrypt(char *plaintext, char *password,
-                                 struct skcipher_def *sk)
-{
-    int ret = -EFAULT;
-    unsigned char key[SYMMETRIC_KEY_LENGTH];
-
-    if (!sk->tfm)
-    {
-        sk->tfm = crypto_alloc_skcipher("cbc-aes-aesni", 0, 0);
-        if (IS_ERR(sk->tfm))
-        {
-            pr_info("could not allocate skcipher handle\n");
-            return PTR_ERR(sk->tfm);
-        }
-    }
-
-    if (!sk->req)
-    {
-        sk->req = skcipher_request_alloc(sk->tfm, GFP_KERNEL);
-        if (!sk->req)
-        {
-            pr_info("could not allocate skcipher request\n");
-            ret = -ENOMEM;
-            goto out;
-        }
-    }
-
-    skcipher_request_set_callback(sk->req, CRYPTO_TFM_REQ_MAY_BACKLOG,
-                                  test_skcipher_callback,
-                                  &sk->result);
-
-    /* clear the key */
-    memset((void *)key, '\0', SYMMETRIC_KEY_LENGTH);
-
-    /* Use the world's favourite password */
-    sprintf((char *)key, "%s", password);
-
-    /* AES 256 with given symmetric key */
-    if (crypto_skcipher_setkey(sk->tfm, key, SYMMETRIC_KEY_LENGTH))
-    {
-        pr_info("key could not be set\n");
-        ret = -EAGAIN;
-        goto out;
-    }
-    pr_info("Symmetric key: %s\n", key);
-    pr_info("Plaintext: %s\n", plaintext);
-
-    if (!sk->ivdata)
-    {
-        /* see https://en.wikipedia.org/wiki/Initialization_vector */
-        sk->ivdata = kmalloc(CIPHER_BLOCK_SIZE, GFP_KERNEL);
-        if (!sk->ivdata)
-        {
-            pr_info("could not allocate ivdata\n");
-            goto out;
-        }
-        get_random_bytes(sk->ivdata, CIPHER_BLOCK_SIZE);
-    }
-
-    if (!sk->scratchpad)
-    {
-        /* The text to be encrypted */
-        sk->scratchpad = kmalloc(CIPHER_BLOCK_SIZE, GFP_KERNEL);
-        if (!sk->scratchpad)
-        {
-            pr_info("could not allocate scratchpad\n");
-            goto out;
-        }
-    }
-    sprintf((char *)sk->scratchpad, "%s", plaintext);
-
-    sg_init_one(&sk->sg, sk->scratchpad, CIPHER_BLOCK_SIZE);
-    skcipher_request_set_crypt(sk->req, &sk->sg, &sk->sg,
-                               CIPHER_BLOCK_SIZE, sk->ivdata);
-    init_completion(&sk->result.completion);
-
-    /* encrypt data */
-    ret = crypto_skcipher_encrypt(sk->req);
-    pr_info("sk->req : %d", sk->req);
-    ret = test_skcipher_result(sk, ret);
-    if (ret)
-        goto out;
-
-    pr_info("Encryption request successful\n");
-
-out:
-    return ret;
-}
-
-int cryptoapi_init(void)
-{
-    /* The world's favourite password */
-    char *password = "password123";
-
-    sk.tfm = NULL;
-    sk.req = NULL;
-    sk.scratchpad = NULL;
-    sk.ciphertext = NULL;
-    sk.ivdata = NULL;
-
-    test_skcipher_encrypt("Testing", password, &sk);
+    printk("MY_TEST: init.\n");
+    my_test();
     return 0;
 }
 
-void cryptoapi_exit(void)
+static void test_mod_exit(void)
 {
-    test_skcipher_finish(&sk);
+    printk("MY_TEST: exit.\n");
 }
+module_init(test_mod_init);
+module_exit(test_mod_exit);
 
-module_init(cryptoapi_init);
-module_exit(cryptoapi_exit);
-
-MODULE_AUTHOR("Bob Mottram");
-MODULE_DESCRIPTION("Symmetric key encryption example");
+MODULE_AUTHOR("xana");
+MODULE_DESCRIPTION("my test module");
 MODULE_LICENSE("GPL");

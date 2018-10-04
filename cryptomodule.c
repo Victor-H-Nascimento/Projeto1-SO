@@ -10,12 +10,15 @@
  * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
  */
 
-#include <linux/init.h>      // Macros used to mark up functions e.g. __init __exit
-#include <linux/module.h>    // Core header for loading LKMs into the kernel
-#include <linux/device.h>    // Header to support the kernel Driver Model
-#include <linux/kernel.h>    // Contains types, macros, functions for the kernel
-#include <linux/fs.h>        // Header for the Linux file system support
-#include <linux/uaccess.h>   // Required for the copy to user function
+#include <linux/init.h>   // Macros used to mark up functions e.g. __init __exit
+#include <linux/module.h> // Core header for loading LKMs into the kernel
+#include <linux/device.h> // Header to support the kernel Driver Model
+#include <linux/crypto.h>
+#include <linux/kernel.h>  // Contains types, macros, functions for the kernel
+#include <linux/fs.h>      // Header for the Linux file system support
+#include <linux/uaccess.h> // Required for the copy to user function
+#include <linux/scatterlist.h>
+
 #define DEVICE_NAME "crypto" ///< The device will appear at /dev/ebbchar using this value
 #define CLASS_NAME "cpt"     ///< The device class -- this is a character device driver
 
@@ -43,6 +46,7 @@ static int dev_open(struct inode *, struct file *);
 static int dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
+static void my_test(void);
 
 /** @brief Devices are represented as file structure in the kernel. The file_operations structure from
  *  /linux/fs.h lists the callback functions that you wish to associated with your file operations
@@ -65,7 +69,7 @@ static struct file_operations fops =
 static int __init ebbchar_init(void)
 {
     printk(KERN_INFO "CryptoModule: modulo crypto inicializado com a chave: %s.\n", key);
-
+    //my_test();
     // Try to dynamically allocate a major number for the device -- more difficult but worth it
     majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
     if (majorNumber < 0)
@@ -179,5 +183,138 @@ static int dev_release(struct inode *inodep, struct file *filep)
  *  identify the initialization function at insertion time and the cleanup function (as
  *  listed above)
  */
+
+static void my_test(void)
+{
+    uint32_t *input;
+    uint32_t *output;
+    uint32_t *temp;
+    unsigned char *src;
+    unsigned char *dst;
+    size_t blk_len = 16;
+    size_t key_len = 16;
+    int ret;
+
+    struct crypto_blkcipher *my_tfm;
+    struct blkcipher_desc desc;
+    struct scatterlist *src_sg;
+    struct scatterlist *dst_sg;
+
+    unsigned char my_key[32] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                                0x09, 0x00, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+
+    unsigned char *my_iv;
+    void *iv;
+    size_t ivsize = 16;
+    my_iv = vmalloc(blk_len);
+    memset(my_iv, 0, blk_len);
+
+    temp = vmalloc(blk_len);
+
+    src_sg = vmalloc(sizeof(struct scatterlist));
+    if (!src_sg)
+    {
+        printk("MY_TEST: failed to alloc src_sg!!!\n");
+        goto src_sg_free;
+    }
+    dst_sg = vmalloc(sizeof(struct scatterlist));
+    if (!dst_sg)
+    {
+        printk("MY_TEST: failed to alloc dst_sg!!!\n");
+        goto dst_sg_free;
+    }
+    input = vmalloc(blk_len);
+    if (!input)
+    {
+        printk("MY_TEST: failed to alloc input!!!\n");
+        goto input_free;
+    }
+    output = vmalloc(blk_len);
+    if (!output)
+    {
+        printk("MY_TEST: failed to alloc output!!!\n");
+        goto output_free;
+    }
+    src = vmalloc(blk_len);
+    if (!src)
+    {
+        printk("MY_TEST: failed to alloc src!!!\n");
+        goto src_free;
+    }
+    dst = vmalloc(blk_len);
+    if (!dst)
+    {
+        printk("MY_TEST: failed to alloc dst!!!\n");
+        goto dst_free;
+    }
+
+    my_tfm = crypto_alloc_blkcipher("ecb(aes)", 0, 0);
+    if (!my_tfm)
+    {
+        printk("MY_TEST: failed to alloc tfm!!!\n");
+        goto crypto_free;
+    }
+
+    desc.tfm = my_tfm;
+    desc.flags = 0;
+    crypto_blkcipher_setkey(my_tfm, my_key, key_len);
+
+    iv = crypto_blkcipher_crt(my_tfm)->iv;
+    ivsize = crypto_blkcipher_ivsize(my_tfm);
+
+    memcpy(iv, my_iv, ivsize);
+
+    input[0] = 0x00000000;
+    input[1] = 0x00000000;
+    input[2] = 0x00000000;
+    input[3] = 0x00000000;
+    printk("MY_TEST: input: %x,%x,%x,%x\n", input[0], input[1], input[2], input[3]);
+
+    *((uint32_t *)(&src[0])) = input[0];
+    *((uint32_t *)(&src[4])) = input[1];
+    *((uint32_t *)(&src[8])) = input[2];
+    *((uint32_t *)(&src[12])) = input[3];
+
+    temp[0] = 0xFFFFFFFF;
+    temp[1] = 0xFFFFFFFF;
+    temp[2] = 0xFFFFFFFF;
+    temp[3] = 0xFFFFFFFF;
+    *((uint32_t *)(&dst[0])) = temp[0];
+    *((uint32_t *)(&dst[4])) = temp[1];
+    *((uint32_t *)(&dst[8])) = temp[2];
+    *((uint32_t *)(&dst[12])) = temp[3];
+
+    sg_init_one(src_sg, src, blk_len);
+    sg_init_one(dst_sg, dst, blk_len);
+
+    ret = crypto_blkcipher_encrypt(&desc, dst_sg, src_sg, src_sg->length);
+    if (ret < 0)
+        pr_err("MY_TEST: phase one failed %d\n", ret);
+    output[0] = *((uint32_t *)(&dst[0]));
+    output[1] = *((uint32_t *)(&dst[4]));
+    output[2] = *((uint32_t *)(&dst[8]));
+    output[3] = *((uint32_t *)(&dst[12]));
+
+    printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
+
+    crypto_free_blkcipher(my_tfm);
+
+    vfree(temp);
+
+crypto_free:
+    vfree(dst);
+dst_free:
+    vfree(src);
+src_free:
+    vfree(output);
+output_free:
+    vfree(input);
+input_free:
+    vfree(dst_sg);
+dst_sg_free:
+    vfree(src_sg);
+src_sg_free:
+    printk("MY_TEST: END!!!\n");
+}
 module_init(ebbchar_init);
 module_exit(ebbchar_exit);
