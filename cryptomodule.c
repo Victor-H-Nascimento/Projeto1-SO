@@ -186,9 +186,9 @@ static int dev_release(struct inode *inodep, struct file *filep)
 
 static void my_test(void)
 {
-    uint32_t *input;
-    uint32_t *output;
-    uint32_t *temp;
+    char *input;
+    char *output;
+    char *temp;
     unsigned char *src;
     unsigned char *dst;
     size_t blk_len = 16;
@@ -265,6 +265,7 @@ static void my_test(void)
     memcpy(iv, my_iv, ivsize);
 
     char texto[256] = {"TETA"};
+    char texto_criptografado[256] = {""};
     pr_info("Tamanho da entrada: %d\n", strlen(texto));
     int j;
     int n_loops = strlen(texto) / 4;
@@ -281,17 +282,17 @@ static void my_test(void)
             input[i] = texto[i];
         }
 
-        printk("MY_TEST: input: %c,%c,%c,%c\n", input[0], input[1], input[2], input[3]);
+        printk("CryptoModule: input: %c,%c,%c,%c\n", input[0], input[1], input[2], input[3]);
 
         for (i = 0; i < 4; i++)
         {
-            *((uint32_t *)(&src[i * 4])) = input[i];
+            *((char *)(&src[i * 4])) = input[i];
         }
 
         for (i = 0; i < 4; i++)
         {
             temp[i] = 0xFFFFFFFF;
-            *((uint32_t *)(&dst[i * 4])) = temp[i];
+            *((char *)(&dst[i * 4])) = temp[i];
         }
 
         sg_init_one(src_sg, src, blk_len);
@@ -303,9 +304,9 @@ static void my_test(void)
 
         for (i = 0; i < 4; i++)
         {
-            output[i] = *((uint32_t *)(&dst[i * 4]));
+            output[i] = *((char *)(&dst[i * 4]));
         }
-        printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
+        printk("CryptoModule: output criptografada: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
     }
     ret = crypto_blkcipher_decrypt(&desc, dst_sg, dst_sg, src_sg->length);
     if (ret < 0)
@@ -313,10 +314,10 @@ static void my_test(void)
 
     for (i = 0; i < 4; i++)
     {
-        output[i] = *((uint32_t *)(&dst[i * 4]));
+        output[i] = *((char *)(&dst[i * 4]));
     }
 
-    printk("MY_TEST: output: %x,%x,%x,%x\n", output[0], output[1], output[2], output[3]);
+    printk("CryptoModule: output descriptografada: %c,%c,%c,%c\n", output[0], output[1], output[2], output[3]);
 
     crypto_free_blkcipher(my_tfm);
 
