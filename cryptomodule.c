@@ -16,7 +16,7 @@ MODULE_DESCRIPTION("Modulo de Linux para cryptografar uma mensagem"); ///< The d
 MODULE_VERSION("0.1");                                                ///< A version number to inform users
 
 static char *key = "0123456789ABCDEF";
-static int majorNumber;          ///< Stores the device number -- determined automatically
+static int majorNumber; ///< Stores the device number -- determined automatically
 static uint32_t msg_cryptografada[256];
 static char msg_descryptografada[256];
 static int num_blocos = 0;
@@ -25,6 +25,7 @@ static int numberOpens = 0;                 ///< Counts the number of times the 
 static struct class *ebbcharClass = NULL;   ///< The device-driver class struct pointer
 static struct device *ebbcharDevice = NULL; ///< The device-driver device struct pointer
 static int tamanho_texto = 0;
+static char msg_to_send[256];
 //receber por parametros
 
 module_param(key, charp, 0000);
@@ -100,9 +101,9 @@ static int dev_open(struct inode *inodep, struct file *filep)
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
     int error_count = 0;
-    decrypto_fuction();
+    //decrypto_fuction();
     // copy_to_user has the format ( * to, *from, size) and returns 0 on success
-    error_count = copy_to_user(buffer, msg_descryptografada, strlen(msg_descryptografada));
+    error_count = copy_to_user(buffer, msg_to_send, tamanho_texto);
 
     if (error_count == 0)
     { // if true then have success
@@ -119,8 +120,17 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 { // len possui a quantidade de caracteres escritos
-    crypto_fuction(buffer);
-    pr_info("CryptoModule: Escrito %d caracteres no dispositivo", len);
+    if ((strcmp((buffer[(strlen(buffer) - 1)]), "c")) == 0)
+    {
+        static int i;
+        crypto_fuction(buffer);
+        for (i = 0; i < tamanho_texto; i++)
+        {
+            msg_to_send[i] = msg_cryptografada[i]; 
+        }
+    }
+
+    //pr_info("CryptoModule: Escrito %d caracteres no dispositivo", len);
     return len;
 }
 

@@ -24,11 +24,31 @@ int main(int argc, char *argv[])
             char stringToSend[BUFFER_LENGTH];
             strcpy(stringToSend, argv[2]);
             printf("ESCREVENDO A MENSAGEM: [%s].\n", stringToSend);
+            strcat(stringToSend, argv[1]);                           //concatena a sring com a função solicitada
             int ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
             if (ret < 0)
             {
                 perror("ERRO AO ESCREVER A MENSAGEM NO DISPOSITIVO\n.");
                 return errno;
+            }
+            ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
+            if (ret < 0)
+            {
+                perror("ERRO AO LER DO DISPOSITIVO.\n");
+                return errno;
+            }
+            if (receive == NULL || strcmp(receive, "") == 0)
+            {
+                printf("NAO EXISTE MENSAGEM PARA DESCRIPTOGRAFAR.\n");
+            }
+            else
+            {
+                printf("MENSAGEM CRIPTOGRAFADA:[");
+                for (int i = 0; i < strlen(argv[2]); i++)
+                {
+                    printf("%x ", receive[i]);
+                }
+                printf("]\n");
             }
         }
         else
