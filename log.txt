@@ -1,0 +1,84 @@
+[  722.155847] ---------------TESTING1----------------
+[  722.155856] --Pos crypto_alloc_skcipher--
+[  722.155857] sk->tfm: edcbe700
+[  722.155858] &sk->tfm: c0c053a0
+[  722.155859] *sk->tfm: 92
+[  722.155860] --Pos skcipher_request_alloc--
+[  722.155860] sk->req: 5165f600
+[  722.155861] &sk->req: c0c053a8
+[  722.155862] *sk->req: 5165f650
+[  722.155865] --Pos crypto_skcipher_setkey--
+[  722.155866] sk->tfm: edcbe700
+[  722.155867] &sk->tfm: c0c053a0
+[  722.155868] *sk->tfm: edcbe768
+[  722.155869] Symmetric key: password123
+[  722.155869] Plaintext: Paulo
+[  722.155872] --Pos kmalloc de sk->ivdata--
+[  722.155873] sk->ivdata: 8dd65930
+[  722.155874] &sk->ivdata: c0c053e8
+[  722.155875] *sk->ivdata: 9
+[  722.155875] --Pos kmalloc de sk->scratchpad--
+[  722.155876] sk->scratchpad: 8dd65c90
+[  722.155877] &sk->scratchpad: c0c053d8
+[  722.155877] *sk->scratchpad: ffffff89
+[  722.155878] --Pos sprintf de sk->scratchpad--
+[  722.155879] sk->scratchpad: Paulo
+[  722.155880] &sk->scratchpad: c0c053d8
+[  722.155880] *sk->scratchpad: 50
+[  722.155881] ----Pos sg_init_one----
+[  722.155882] sk->sg: c0c053a0
+[  722.155883] &sk->sg: c0c05380
+[  722.155885] --Pos crypto_skcipher_encrypt--
+[  722.155886] sk->req: 5165f600
+[  722.155887] &sk->req: c0c053a8
+[  722.155888] *sk->req: 5165f650
+[  722.155889] --Scatterlist--
+[  722.155890] sk->sg.page_link: 43375942
+[  722.155891] &sk->sg.page_link: c0c05380
+[  722.155892] sk->sg.offset: c90
+[  722.155892] &sk->sg.offset: c0c05388
+[  722.155893] sk->sg.length: 10
+[  722.155894] &sk->sg.length: c0c0538c
+[  722.155895] Encryption request successful
+[  722.155896] ---------------TESTING2----------------
+[  722.155899] --Pos crypto_alloc_skcipher--
+[  722.155900] sk->tfm: edcbe200
+[  722.155900] &sk->tfm: c0c053a0
+[  722.155901] *sk->tfm: 92
+[  722.155902] --Pos skcipher_request_alloc--
+[  722.155902] sk->req: 5165f300
+[  722.155903] &sk->req: c0c053a8
+[  722.155904] *sk->req: 5165f350
+[  722.155905] --Pos crypto_skcipher_setkey--
+[  722.155905] sk->tfm: edcbe200
+[  722.155906] &sk->tfm: c0c053a0
+[  722.155907] *sk->tfm: edcbe268
+[  722.155908] Symmetric key: password123
+[  722.155908] Plaintext: Malaquias
+[  722.155910] --Pos kmalloc de sk->ivdata--
+[  722.155911] sk->ivdata: 8dd65d70
+[  722.155911] &sk->ivdata: c0c053e8
+[  722.155912] *sk->ivdata: fffffffd
+[  722.155913] --Pos kmalloc de sk->scratchpad--
+[  722.155913] sk->scratchpad: 8dd65100
+[  722.155914] &sk->scratchpad: c0c053d8
+[  722.155915] *sk->scratchpad: 49
+[  722.155915] --Pos sprintf de sk->scratchpad--
+[  722.155916] sk->scratchpad: Malaquias
+[  722.155917] &sk->scratchpad: c0c053d8
+[  722.155918] *sk->scratchpad: 4d
+[  722.155918] ----Pos sg_init_one----
+[  722.155919] sk->sg: c0c053a0
+[  722.155920] &sk->sg: c0c05380
+[  722.155921] --Pos crypto_skcipher_encrypt--
+[  722.155922] sk->req: 5165f300
+[  722.155923] &sk->req: c0c053a8
+[  722.155924] *sk->req: 5165f350
+[  722.155924] --Scatterlist--
+[  722.155925] sk->sg.page_link: 43375942
+[  722.155926] &sk->sg.page_link: c0c05380
+[  722.155926] sk->sg.offset: 100
+[  722.155927] &sk->sg.offset: c0c05388
+[  722.155928] sk->sg.length: 10
+[  722.155929] &sk->sg.length: c0c0538c
+[  722.155929] Encryption request successful
