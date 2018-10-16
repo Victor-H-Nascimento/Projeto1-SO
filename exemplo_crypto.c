@@ -41,6 +41,17 @@ struct skcipher_def
     char *ivdata;
 };
 
+static void hexdump(unsigned char *buf, unsigned int len)
+{
+    pr_info("len = %u\n", len);
+    while (len--)
+    {
+        pr_info("%02x", *buf++);
+    }
+
+    pr_info("\n");
+}
+
 static struct skcipher_def sk;
 
 static void test_skcipher_finish(struct skcipher_def *sk)
@@ -126,7 +137,7 @@ static int test_skcipher_encrypt(char *plaintext, char *password,
             return PTR_ERR(sk->tfm);
         }
     }
-    
+
     pr_info("--Pos crypto_alloc_skcipher--");
     pr_info("sk->tfm: %x", sk->tfm);
     pr_info("&sk->tfm: %x", &sk->tfm);
@@ -221,6 +232,9 @@ static int test_skcipher_encrypt(char *plaintext, char *password,
 
     /* encrypt data */
     ret = crypto_skcipher_encrypt(sk->req);
+
+    //hexdump(&sk->req, sizeof(sk->req));
+
     pr_info("--Pos crypto_skcipher_encrypt--");
     pr_info("sk->req: %x\n", sk->req);
     pr_info("&sk->req: %x\n", &sk->req);
