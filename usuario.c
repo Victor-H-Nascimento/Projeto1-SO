@@ -37,19 +37,13 @@ int main(int argc, char *argv[])
                 perror("ERRO AO LER DO DISPOSITIVO.\n");
                 return errno;
             }
-            if (receive == NULL || strcmp(receive, "") == 0)
+
+            printf("MENSAGEM CRIPTOGRAFADA:[");
+            for (int i = 0; i < strlen(argv[2]); i++)
             {
-                printf("NAO EXISTE MENSAGEM PARA DESCRIPTOGRAFAR.\n");
+                printf("%x ", receive[i]);
             }
-            else
-            {
-                printf("MENSAGEM CRIPTOGRAFADA:[");
-                for (int i = 0; i < strlen(argv[2]); i++)
-                {
-                    printf("%x ", receive[i]);
-                }
-                printf("]\n");
-            }
+            printf("]\n");
         }
         else
         {
