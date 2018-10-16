@@ -24,7 +24,7 @@ static struct class *cryptocharClass = NULL;   ///< The device-driver class stru
 static struct device *cryptocharDevice = NULL; ///< The device-driver device struct pointer
 
 int size = 0;
-char *key;
+char *key = "0123456789ABCDEF";
 char *encrypted;
 char *decrypted;
 unsigned char *sha1res;
@@ -39,8 +39,7 @@ static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
 void hash(char *in);
 void encrypt(char *in);
-void decrypt(void);
-
+void decrypt(char *in);
 
 static struct file_operations fops = {
     .open = dev_open,
@@ -120,14 +119,15 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
-    char opcao = *buffer;
+    int i;
+    char opcao = buffer[strlen(buffer) - 1];
     char *src = kmalloc(strlen(buffer), GFP_ATOMIC);
 
     switch (opcao)
     {
     case 'c':
         strcpy(src, buffer);
-        strsep(&src, " ");
+        src[strlen(src) - 1] = '\0';
         printk(KERN_INFO "Dado para encriptar: %s", src);
         encrypt(src);
         printk(KERN_INFO "Dado encriptado: %*ph", 16, encrypted);
@@ -135,15 +135,18 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
         strcpy(message, encrypted);
         break;
     case 'd':
-        decrypt();
-        printk(KERN_INFO "Dado decriptado: %s", decrypted);
+        strcpy(src, buffer);
+        src[strlen(src) - 1] = '\0';
+        printk(KERN_INFO "Dado para descriptar: %*ph", 16, src);
+        decrypt(src);
+        printk(KERN_INFO "Dado descriptado: %s", decrypted);
         message = kmalloc(strlen(decrypted), GFP_ATOMIC);
         strcpy(message, decrypted);
         break;
     case 'h':
         strcpy(src, buffer);
-        strsep(&src, " ");
-
+        src[strlen(src) - 1] = '\0';
+        printk(KERN_INFO "Dado para hash: %s", src);
         hash(src);
         message = kmalloc(SHA1_DIGEST_SIZE, GFP_ATOMIC);
         strcpy(message, sha1res);
@@ -162,7 +165,6 @@ static int dev_release(struct inode *inodep, struct file *filep)
     printk(KERN_INFO "Crypto: Device successfully closed\n");
     return 0;
 }
-
 
 void hash(char *in)
 {
@@ -219,7 +221,7 @@ void encrypt(char *in)
     crypto_free_cipher(tfm);
 }
 
-void decrypt(void)
+void decrypt(char *in)
 {
     int i, count, div, modd;
     struct crypto_cipher *tfm;

@@ -39,9 +39,9 @@ int main(int argc, char *argv[])
             }
 
             printf("MENSAGEM CRIPTOGRAFADA:[");
-            for (int i = 0; i < strlen(argv[2]); i++)
+            for (int i = 0; i < strlen(receive); i++)
             {
-                printf("%x ", receive[i]);
+                printf("%x ", (unsigned char)receive[i]);
             }
             printf("]\n");
         }
@@ -49,27 +49,54 @@ int main(int argc, char *argv[])
         {
             if (strcmp(argv[1], "d") == 0)
             {
-                printf("VOCE ESCOLHEU DESCRIPTOGRAFAR.\n");
-                int ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
+                printf("VOCE ESCOLHEU DESCRIPTOGRAFAR A MENSAGEM: [%s].\n", argv[2]); //tratar a entrada
+                char stringToSend[BUFFER_LENGTH];
+                strcpy(stringToSend, argv[2]);
+                printf("ESCREVENDO A MENSAGEM: [%s].\n", stringToSend);
+                strcat(stringToSend, argv[1]);                           //concatena a sring com a função solicitada
+                int ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
+                if (ret < 0)
+                {
+                    perror("ERRO AO ESCREVER A MENSAGEM NO DISPOSITIVO\n.");
+                    return errno;
+                }
+                ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
                 if (ret < 0)
                 {
                     perror("ERRO AO LER DO DISPOSITIVO.\n");
                     return errno;
                 }
-                if (receive == NULL || strcmp(receive, "") == 0)
-                {
-                    printf("NAO EXISTE MENSAGEM PARA DESCRIPTOGRAFAR.\n");
-                }
-                else
-                {
-                    printf("MENSAGEM DESCRIPTOGRAFADA: [%s].\n", receive);
-                }
+
+                printf("MENSAGEM DESCRIPTOGRAFADA:[%s]\n", receive);
             }
             else
             {
                 if (strcmp(argv[1], "h") == 0)
                 {
-                    printf("VOCE ESCOLHEU RESUMO CRIPTOGRAFICO\n");
+                    printf("VOCE ESCOLHEU RESUMO CRIPTOGRAFICO DA MENSAGEM: [%s].\n", argv[2]);
+                    char stringToSend[BUFFER_LENGTH];
+                    strcpy(stringToSend, argv[2]);
+                    printf("ESCREVENDO A MENSAGEM: [%s].\n", stringToSend);
+                    strcat(stringToSend, argv[1]);                           //concatena a sring com a função solicitada
+                    int ret = write(fd, stringToSend, strlen(stringToSend)); // Send the string to the LKM
+                    if (ret < 0)
+                    {
+                        perror("ERRO AO ESCREVER A MENSAGEM NO DISPOSITIVO\n.");
+                        return errno;
+                    }
+                    ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
+                    if (ret < 0)
+                    {
+                        perror("ERRO AO LER DO DISPOSITIVO.\n");
+                        return errno;
+                    }
+
+                    printf("HASH DA MENSAGEM :[");
+                    for (int i = 0; i < strlen(receive); i++)
+                    {
+                        printf("%x ", (unsigned char)receive[i]);
+                    }
+                    printf("]\n");
                 }
                 else
                 {
