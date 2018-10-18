@@ -1,0 +1,177 @@
+Introduction
+============
+Cryproc is module for the Linux 2.6 kernel which allows user space programs to
+access the kernel's cryptographic functions. When loaded, the module creates a
+file called "cryproc" in the /proc filesystem. Applications can open this file
+read-write and, using the protocol described below, instruct the kernel to
+perform some of the functions the CryptoAPI provides. A sample application for
+performing this operation, cryproc-tool, is provided.
+
+The CryptoAPI provides three categories of algorithms, also called transforms
+or tfm's: message digests, ciphers and compression (see "Compression" for a
+list of caveats associated with compression algorithms). Support for the
+routines used must be compiled into the kernel or available as a module in
+order for Cryproc to work. Unfortunately, there seems to be no easy way of
+finding out which algorithms are supported on a particular machine, other than
+looking at the kernel's config file. The file /proc/crypto lists only those
+tranforms, which are compiled-in or whose modules are already loaded into the
+kernel.
+
+Using cryptographic functions supported by the kernel instead of user space
+programs may be advantageous to security, since a running kernel is usually
+harder to tamper with than regular user-space software or libraries.
+
+The homepage of Cryproc is http://cryproc.sourceforge.net/
+
+
+Warning
+=======
+Consider this to be beta-quality software. Current version has experienced too
+little real-world testing to be considered ready for serious use. It works for
+me, but YMMV.
+
+
+The protocol
+============
+The conversation with /proc/cryproc must be performed after opening that file
+for both reading and writing. The application initializes a transform (tfm)
+object supplied by the CryptoAPI by sending a header before the data to be
+transformed, according to the following format:
+
+algorithm_name<NEWLINE>
+data_size<NEWLINE>
+key<NEWLINE>
+data
+
+The algorithm_name is a string used to identify the algorithm to be used, for
+example "md5" (without the quotes) for the MD5 message digest. Data_size is
+the size of data to be processed, expressed as an ASCII string (e.g. "1234").
+The header's size is not to be included in data_size. The key is a special
+string which controls the algorithm's operation. Its first character is used
+to select options, e.g. choose between encryption and decription etc. Following
+options are recognized:
+
+H: use HMAC (Hashed Message Authentication Code) instead of regular MD (Message
+   Digest) <digest>
+C: encrypt using ECB mode <cipher>
+B: encrypt using CBC mode <cipher>
+F: encrypt using CFB mode <cipher>
+T: encrypt using CTF mode <cipher>
+c: decrypt using ECB mode <cipher>
+b: decrypt using CBC mode <cipher>
+f: decrypt using CFB mode <cipher>
+t: decrypt using CTF mode <cipher>
+S: compress <compress>
+any other character: use default options (regular MD for message digests,
+   decompress for compression, ECB mode for ciphers (upper- and lowercase
+   indicate encryption and decryption, respectively).
+
+Not all cipher block modes may be supported for all algorithms, quite often
+only ECB and CBC are. Using cipher options with other algorithm classes (e.g.
+the "B" option with a message digest) may result in unpredictable behavior.
+
+Further characters should form a hex-encoded representation of the key to be
+used with the algorithm and may consist of any even number of characters
+0-9a-fA-F, with up to 64 characters. Not all algorithms accept all key sizes.
+
+For unkeyed message digests, the key may be empty (no "option" character
+indicates default options).
+
+After the newline following the key, data to be worked on should be written
+to the file. Note that after each write to the file, the operation's result
+is only available until the next write and will be discarded thereafter.
+Therefore, the correct way to handle IO is to try reading in as much data as
+possible from the file after each write. The size of the output may be
+different than the size of input data. All operations must be performed
+between opening the file and closing it, otherwise the calculations' state
+won't be maintained. See cryproc-tool.c for example code. Actual calculations
+are performed during the write operation while reading only retrieves the
+results.
+
+
+Examples (using cryproc-tool)
+=============================
+
+od and tr are used to get a pretty printout of the digests, which are returned
+by /proc/cryproc in binary form.
+
+Calculate the MD5 sum of "hello" (5d41402abc4b2a76b9719d911017c592):
+echo -e "md5\n5\n\nhello" | ./cryproc-tool | od -t x1 -A n | tr -d ' '
+Use:
+echo -n "hello" | md5sum -
+to perform the same task with the help of user-space tools.
+
+Calculate HMAC-SHA1 of the file COPYING (18009 bytes) using 0xAABBCCDD as the
+key (result is 77efc334d4fd361a4165cd0089f5be596c573364):
+( echo -e "sha1\n18009\nHaabbccdd"; cat COPYING ) \
+        | ./cryproc-tool | od -t x1 -A n | ( tr -d ' \n'; echo )
+
+Encrypt the file COPYING (18009 bytes) using DES in ECB mode with the key
+5B57E69E85642F97:
+( echo -e "des\n18009\nC5B57E69E85642F97"; cat COPYING) \
+        | ./cryproc-tool > COPYING.encrypted
+
+Decrypt COPYING.encrypted (18008 bytes, see "Ciphers" for explanation):
+( echo -e "des\n18008\nc5B57E69E85642F97"; cat COPYING.encrypted) \
+        | ./cryproc-tool
+
+
+Compiling and Installing
+========================
+Please refer to INSTALL.
+
+
+Ciphers
+=======
+The ciphers supported by CryptoAPI are block ciphers, meaning they process data
+in whole blocks, usually several bytes in size, rather than byte by byte. This
+means that if a cipher's block size is e.g. 8 bytes, a smaller number of bytes
+cannot be processed unless it is padded with additional characters. It is the
+application's responsiblity to pad data to a multiple of the block size. If
+data sent to /proc/cryproc isn't a multiple of the block size, the incomplete
+last block will not be processed at all.
+
+For modes other than ECB, a special Initialization Vector (IV) is used. Current
+version of Cryproc always uses an IV consisting of all zeroes. A way to have a
+custom IV anyway is to prepend it to the data stream.
+
+
+Compresssion
+============
+The standard kernel tree contains only one compression algorithm at the moment,
+deflate. The support for compression routines in CryptoAPI seems to be very
+basic at the moment, as it is impossible to compress a long stream of data in
+a single operation. Since the compression CryptoAPI routines are only used in
+network protocol drivers, which don't need handling more than a single packet
+of data at a time, this is completely acceptable. The issue with other uses is,
+all compression or decompression must be performed in a single CryptoAPI call
+which severly limits the amount of data that can be processed. This limitation
+applies also to Cryproc -- each write operation will result in a separate zlib-
+compressed stream to be generated. When these streams are concatenated (e.g. in
+a file), it isn't always possible to synchronize with the starts and ends of
+streams found inside without seeking in the file -- something Cryproc can't
+currently do. Thus, at the moment decompression support is limited to a single
+write operation per decompression. If your application can take care by itself
+that each write to /proc/cryproc contains one complete deflated stream (and no
+other data), then it will be able to decompress any amount of data. Otherwise,
+only the first write will succeed with the following writes resulting in I/O
+errors. There is a hard limit of 65400 bytes for each compression operation's
+result.
+
+
+License (GNU GPL)
+=================
+
+Cryproc - Copyright (c) 2005 by Michal Kosmulski
+
+Cryproc is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+Cryproc is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+See COPYING for the full text of the License.
