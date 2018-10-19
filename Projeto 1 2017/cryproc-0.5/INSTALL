@@ -1,0 +1,11 @@
+To compile Cryproc, run:
+make
+in the project's directory. This will generate the binary files: cryproc.ko
+(the kernel module) and cryproc-tool (the command-line utility for accessing
+/proc/cryproc). You can also use:
+make debug
+to compile the kernel module with extra debugging information (using the debug-
+enabled version may fill your logs with quite a lot of data!).
+To load the module, use:
+insmod cryproc.ko
+Usage instructions for cryproc-tool can be found in the README.
