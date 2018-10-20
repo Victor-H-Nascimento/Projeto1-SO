@@ -77,28 +77,13 @@ static void test_skcipher_callback(struct crypto_async_request *req, int error)
 {
     
     struct tcrypt_result *result = req->data;
-    //int ret;
-
+    
     if (error == -EINPROGRESS)
         return;
 
     result->err = error;
     complete(&result->completion);
     pr_info("Encryption finished successfully\n");
-
-    /* decrypt data */
-    
-    /*memset((void*)sk.scratchpad, '-', CIPHER_BLOCK_SIZE);
-    ret = crypto_skcipher_decrypt(sk.req);
-    ret = test_skcipher_result(&sk, ret);
-    if (ret)
-        return;
-
-    sg_copy_from_buffer(&sk.sg, 1, sk.scratchpad, CIPHER_BLOCK_SIZE);
-    sk.scratchpad[CIPHER_BLOCK_SIZE-1] = 0;
-
-    pr_info("Decryption request successful\n");
-    pr_info("Decrypted: %s\n", sk.scratchpad);*/
     
 }
 
