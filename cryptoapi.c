@@ -3,39 +3,37 @@
 #include <linux/crypto.h>
 
 #define SYMMETRIC_KEY_LENGTH 32
-#define CIPHER_BLOCK_SIZE 16
+#define CIPHER_BLOCK_SIZE    16
 
-struct tcrypt_result
-{
+struct tcrypt_result {
     struct completion completion;
     int err;
 };
 
-struct skcipher_def
-{
+struct skcipher_def {
     struct scatterlist sg;
-    struct crypto_skcipher *tfm;
-    struct skcipher_request *req;
+    struct crypto_skcipher * tfm;
+    struct skcipher_request * req;
     struct tcrypt_result result;
-    char *scratchpad;
-    char *ciphertext;
-    char *ivdata;
+    char * scratchpad;
+    char * ciphertext;
+    char * ivdata;
 };
 
 static struct skcipher_def sk;
 
-static void hexdump(unsigned char *buf, unsigned int len)
-{
-    pr_info("len = %u\n", len);
-    while (len--)
-    {
-        pr_info("%02x", *buf++);
-    }
+static void hexdump(unsigned char *buf, unsigned int len){
+	printk("len = %u\n", len);	
+	while(len--){
 
-    pr_info("\n");
+		pr_info("%02x",*buf++);	
+		
+	}
+	
+	printk("\n");
 }
 
-static void test_skcipher_finish(struct skcipher_def *sk)
+static void test_skcipher_finish(struct skcipher_def * sk)
 {
     if (sk->tfm)
         crypto_free_skcipher(sk->tfm);
@@ -49,37 +47,35 @@ static void test_skcipher_finish(struct skcipher_def *sk)
         kfree(sk->ciphertext);
 }
 
-static int test_skcipher_result(struct skcipher_def *sk, int rc)
+static int test_skcipher_result(struct skcipher_def * sk, int rc)
 {
-    switch (rc)
-    {
+    switch (rc) {
     case 0:
-        //pr_info("Pudim!\n");
+	//pr_info("Pudim!\n");
         break;
-    case -EINPROGRESS:
+    case -EINPROGRESS: pr_info("Pudim!\n"); break;
     case -EBUSY:
         rc = wait_for_completion_interruptible(
             &sk->result.completion);
-        if (!rc && !sk->result.err)
-        {
+        if (!rc && !sk->result.err) {
             reinit_completion(&sk->result.completion);
             break;
         }
     default:
         pr_info("skcipher encrypt returned with %d result %d\n",
-                rc, sk->result.err);
+            rc, sk->result.err);
         break;
     }
 
     init_completion(&sk->result.completion);
-
-    //pr_info("Pudim2!\n");
+	
+	
     return rc;
 }
 
 static void test_skcipher_callback(struct crypto_async_request *req, int error)
 {
-
+    
     struct tcrypt_result *result = req->data;
     //int ret;
 
@@ -91,7 +87,7 @@ static void test_skcipher_callback(struct crypto_async_request *req, int error)
     pr_info("Encryption finished successfully\n");
 
     /* decrypt data */
-
+    
     /*memset((void*)sk.scratchpad, '-', CIPHER_BLOCK_SIZE);
     ret = crypto_skcipher_decrypt(sk.req);
     ret = test_skcipher_result(&sk, ret);
@@ -103,29 +99,27 @@ static void test_skcipher_callback(struct crypto_async_request *req, int error)
 
     pr_info("Decryption request successful\n");
     pr_info("Decrypted: %s\n", sk.scratchpad);*/
+    
 }
 
-static int test_skcipher_encrypt(char *plaintext, char *password,
-                                 struct skcipher_def *sk)
+static int test_skcipher_encrypt(char * plaintext, char * password, struct skcipher_def * sk)
 {
     int ret = -EFAULT;
     unsigned char key[SYMMETRIC_KEY_LENGTH];
+    char *aux;
+	int i;
 
-    if (!sk->tfm)
-    {
-        sk->tfm = crypto_alloc_skcipher("cbc-aes-aesni", 0, 0);
-        if (IS_ERR(sk->tfm))
-        {
+    if (!sk->tfm) {
+        sk->tfm = crypto_alloc_skcipher("ecb(aes)", 0, 0);
+        if (IS_ERR(sk->tfm)) {
             pr_info("could not allocate skcipher handle\n");
             return PTR_ERR(sk->tfm);
         }
     }
 
-    if (!sk->req)
-    {
+    if (!sk->req) {
         sk->req = skcipher_request_alloc(sk->tfm, GFP_KERNEL);
-        if (!sk->req)
-        {
+        if (!sk->req) {
             pr_info("could not allocate skcipher request\n");
             ret = -ENOMEM;
             goto out;
@@ -135,14 +129,13 @@ static int test_skcipher_encrypt(char *plaintext, char *password,
     skcipher_request_set_callback(sk->req, CRYPTO_TFM_REQ_MAY_BACKLOG, test_skcipher_callback, &sk->result);
 
     /* clear the key */
-    memset((void *)key, '\0', SYMMETRIC_KEY_LENGTH);
+    memset((void*)key,'\0',SYMMETRIC_KEY_LENGTH);
 
     /* Use the world's favourite password */
-    sprintf((char *)key, "%s", password);
+    sprintf((char*)key,"%s",password);
 
     /* AES 256 with given symmetric key */
-    if (crypto_skcipher_setkey(sk->tfm, key, SYMMETRIC_KEY_LENGTH))
-    {
+    if (crypto_skcipher_setkey(sk->tfm, key, SYMMETRIC_KEY_LENGTH)) {
         pr_info("key could not be set\n");
         ret = -EAGAIN;
         goto out;
@@ -150,117 +143,76 @@ static int test_skcipher_encrypt(char *plaintext, char *password,
     pr_info("Symmetric key: %s\n", key);
     pr_info("Plaintext: %s\n", plaintext);
 
-    if (!sk->ivdata)
-    {
+    if (!sk->ivdata) {
         /* see https://en.wikipedia.org/wiki/Initialization_vector */
         sk->ivdata = kmalloc(CIPHER_BLOCK_SIZE, GFP_KERNEL);
-        if (!sk->ivdata)
-        {
+        if (!sk->ivdata) {
             pr_info("could not allocate ivdata\n");
             goto out;
         }
         get_random_bytes(sk->ivdata, CIPHER_BLOCK_SIZE);
-        pr_info("sk->ivdata = %s\n", sk->ivdata);
     }
 
-    if (!sk->scratchpad)
-    {
+    if (!sk->scratchpad) {
         /* The text to be encrypted */
         sk->scratchpad = kmalloc(CIPHER_BLOCK_SIZE, GFP_KERNEL);
-        if (!sk->scratchpad)
-        {
+        if (!sk->scratchpad) {
             pr_info("could not allocate scratchpad\n");
             goto out;
         }
     }
-
-    sprintf((char *)sk->scratchpad, "%s", plaintext);
-
+	
+    sprintf((char*)sk->scratchpad,"%s",plaintext);
     sg_init_one(&sk->sg, sk->scratchpad, CIPHER_BLOCK_SIZE);
     skcipher_request_set_crypt(sk->req, &sk->sg, &sk->sg, CIPHER_BLOCK_SIZE, sk->ivdata);
-
-    pr_info("Antes...\n");
-    pr_info("&sk->sg = %u\n", &sk->sg);
-    pr_info("&sk->scratchpad = %u\n", &sk->scratchpad);
-    pr_info("######################################################\n");
-    pr_info("sk->sg.pagelink = %u\n", sk->sg.page_link);
-    pr_info("sk->sg.offset = %u\n", sk->sg.offset);
-    pr_info("sk->sg.length = %u\n", sk->sg.length);
-    pr_info("######################################################\n");
-    pr_info("sk->req->dst->page_link = %u\n", sk->req->src->page_link);
-    pr_info("sk->req->dst->offset = %u\n", sk->req->src->offset);
-    pr_info("sk->req->dst->length = %u\n", sk->req->src->length);
-    pr_info("######################################################\n");
-    pr_info("sk->req->dst->page_link = %u\n", sk->req->dst->page_link);
-    pr_info("sk->req->dst->offset = %u\n", sk->req->dst->offset);
-    pr_info("sk->req->dst->length = %u\n", sk->req->dst->length);
-    pr_info("sk->scratchpad = %s\n", sk->scratchpad);
-    pr_info("hexdump: ");
-    hexdump(sk->scratchpad, strlen(sk->scratchpad));
-
     init_completion(&sk->result.completion);
 
-    /* encrypt data */
+/***************************** encrypt data **************************************/
     ret = crypto_skcipher_encrypt(sk->req);
 
-    pr_info("Depois...\n");
-    pr_info("sk->sg.pagelink = %u\n", sk->sg.page_link);
-    pr_info("sk->sg.offset = %u\n", sk->sg.offset);
-    pr_info("sk->sg.length = %u\n", sk->sg.length);
-    pr_info("######################################################\n");
-    pr_info("sk->req->dst->page_link = %u\n", sk->req->src->page_link);
-    pr_info("sk->req->dst->offset = %u\n", sk->req->src->offset);
-    pr_info("sk->req->dst->length = %u\n", sk->req->src->length);
-    pr_info("######################################################\n");
-    pr_info("sk->req->dst->page_link = %u\n", sk->req->dst->page_link);
-    pr_info("sk->req->dst->offset = %u\n", sk->req->dst->offset);
-    pr_info("sk->req->dst->length = %u\n", sk->req->dst->length);
-    pr_info("sk->scratchpad = %s\n", sk->scratchpad);
-    pr_info("hexdump: ");
-    hexdump(sk->scratchpad, strlen(sk->scratchpad));
+	pr_info("Encrypt:\n");
+	aux = NULL;
+	aux = sg_virt(&sk->sg);
+	hexdump(aux, strlen(aux));
 
     ret = test_skcipher_result(sk, ret);
     if (ret)
         goto out;
+	
+ 
+   	pr_info("Encryption request successful\n");
 
-    pr_info("Encryption request successful\n");
+/****************************** decrypt data ********************************************/
+	
+	ret = crypto_skcipher_decrypt(sk->req);
+	aux = NULL;
+	aux = sg_virt(&sk->sg);
+	pr_info("Decrypt: %s", aux);
 
-
-    /*memset((void*)sk->scratchpad, '-', CIPHER_BLOCK_SIZE);
-    sg_init_one(&sk->sg, sk->scratchpad, CIPHER_BLOCK_SIZE);
-    skcipher_request_set_crypt(sk->req, &sk->sg, &sk->sg, CIPHER_BLOCK_SIZE, sk->ivdata);
-    ret = crypto_skcipher_decrypt(sk->req);
-    pr_info("hexdump 2:");
-    hexdump(sk->scratchpad, strlen(sk->scratchpad));
-    pr_info("Decrypted: %u\n", sk->scratchpad);
-    ret = test_skcipher_result(sk, ret);
+	ret = test_skcipher_result(sk, ret);
     if (ret)
-        return;
-
-    sg_copy_from_buffer(&sk->sg, 1, sk->scratchpad, CIPHER_BLOCK_SIZE);
-    sk->scratchpad[CIPHER_BLOCK_SIZE-1] = 0;
-
-    pr_info("Decryption request successful\n");*/
-
+       goto out;
+	
+	pr_info("Decryption request successful\n");
 out:
     return ret;
 }
 
+
+
 int cryptoapi_init(void)
 {
     /* The world's favourite password */
-    char *password = "0123456789ABCDEF";
-
+    char * password = "0123456789ABCDEF";
     sk.tfm = NULL;
     sk.req = NULL;
     sk.scratchpad = NULL;
     sk.ciphertext = NULL;
     sk.ivdata = NULL;
+	
+	test_skcipher_encrypt("Testing", password, &sk);	
 
-    pr_info("Teste 1\n");
-    test_skcipher_encrypt("Testing", password, &sk);
-    /*pr_info("Teste 2\n");
-    test_skcipher_encrypt("Teste", password, &sk);*/
+   
     return 0;
 }
 
