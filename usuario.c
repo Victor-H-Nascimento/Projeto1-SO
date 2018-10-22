@@ -1,3 +1,6 @@
+/*João Pedro Favara - RA: 16061921  
+Murilo Martus Mendoça - RA: 16063497
+Victor Hugo do Nascimento - RA: 16100588*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>

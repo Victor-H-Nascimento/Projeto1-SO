@@ -1,3 +1,7 @@
+/*João Pedro Favara - RA: 16061921	
+Murilo Martus Mendoça - RA: 16063497
+Victor Hugo do Nascimento - RA: 16100588*/
+
 #include <linux/init.h>    // Macros used to mark up functions e.g. __init __exit
 #include <linux/module.h>  // Core header for loading LKMs into the kernel
 #include <linux/device.h>  // Header to support the kernel Driver Model
