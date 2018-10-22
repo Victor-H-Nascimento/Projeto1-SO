@@ -97,46 +97,17 @@ int main(int argc, char *argv[])
                     }
 
                     printf("HASH DA MENSAGEM :[");
-                    for (int i = 0; i < strlen(receive); i++)
+                    for (int i = 0; i < strlen(receive) - 1; i = i + 2)
                     {
-                        printf("%x ", (unsigned char)receive[i]);
+                        printf("%c", receive[i]);
+                        printf("%c ", receive[i + 1]);
                     }
                     printf("]\n");
-                }
-                else
-                {
-                    printf("VOCE ESCOLHEU RESUMO CRIPTOGRAFICO\n");
-                    char stringToSend[BUFFER_LENGTH];
-                    strcpy(stringToSend, argv[2]);
-                    printf("ESCREVENDO A MENSAGEM: [%s]\n", stringToSend);
-                    strcat(opcao, stringToSend);               //para a opcao ficar na primeira posicao
-                    int ret = write(fd, opcao, strlen(opcao)); // Send the string to the LKM
-                    if (ret < 0)
-                    {
-                        perror("ERRO AO ESCREVER A MENSAGEM NO DISPOSITIVO\n.");
-                        return errno;
-                    }
-
-                    ret = read(fd, receive, BUFFER_LENGTH); // Read the response from the LKM
-                    if (ret < 0)
-                    {
-                        perror("ERRO AO LER DO DISPOSITIVO.\n");
-                        return errno;
-                    }
-                    if (receive == NULL || strcmp(receive, "") == 0)
-                    {
-                        printf("NAO EXISTE MENSAGEM PARA DESCRIPTOGRAFAR.\n");
-                    }
-                    else
-                    {
-                        printf("MENSAGEM CRIPTOGRAFADA: [%s] - %i\n", receive, strlen(receive));
-                    }
-
-                    printf("Fim de execucao do programa\n");
                 }
             }
         }
     }
+
     else
     {
         printf("FAVOR ESCOLHER ALGUMA OPCAO!\n");

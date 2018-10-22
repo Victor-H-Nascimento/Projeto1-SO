@@ -114,7 +114,7 @@ static void __exit crypto_exit(void)
     class_unregister(cryptoClass);                      // unregister the device class
     class_destroy(cryptoClass);                         // remove the device class
     unregister_chrdev(majorNumber, DEVICE_NAME);        // unregister the major number
-    printk(KERN_INFO "CryptoModule: bjunda, ate mais!\n");
+    printk(KERN_INFO "CryptoModule: modulo finalizado, ate mais!\n");
 }
 
 static int dev_open(struct inode *inodep, struct file *filep)
@@ -141,7 +141,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
         printk(KERN_INFO "CryptoModule: falha ao enviar %d caracteres ao usuario.\n", error_count);
         return -EFAULT; // Failed -- return a bad address message (i.e. -14)
     }
-    strcpy(message, '\0');  
+    strcpy(message, '\0');
 }
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
